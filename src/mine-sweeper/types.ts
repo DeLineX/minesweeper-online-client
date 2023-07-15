@@ -21,3 +21,14 @@ export type TCell =
 export type TCellWithMeta = TCell & { cellIndex: ICellIndex };
 
 export type TRenderCell = IRenderElement<ICellIndex>;
+
+export interface IGameEndedState {
+  type: "ended";
+  status: "won" | "lost";
+  secondsLeft: number;
+}
+
+export interface IFieldUpdateRes {
+  updatedCells: TCellWithMeta[];
+  gameState?: IGameEndedState;
+}

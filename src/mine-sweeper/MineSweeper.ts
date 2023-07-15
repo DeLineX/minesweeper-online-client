@@ -1,116 +1,31 @@
 import { Graphics, IRenderElement } from "../graphics";
 import { CONFIG } from "./config";
-import { ECellState, TCell, TCellWithMeta, TRenderCell } from "./types";
+import {
+  ECellState,
+  IFieldUpdateRes,
+  IGameEndedState,
+  TCell,
+  TCellWithMeta,
+  TRenderCell,
+} from "./types";
 import { io } from "socket.io-client";
 
 export class MineSweeper {
   private _graphics: Graphics;
   private _field: TCell[][] = [];
-  // private controls: IElement;
+  private _controls: Record<string, IRenderElement> = {};
   private _socket = io("http://localhost:3000/");
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(private canvas: HTMLCanvasElement) {
     this._graphics = new Graphics(canvas);
 
-    this._socket.on("field:loaded", (field: TCell[][]) => {
-      this._field = field;
-
-      const elements: IRenderElement[] = [];
-
-      for (let i = 0; i < this._field.length; i++) {
-        for (let j = 0; j < this._field[i].length; j++) {
-          const cell = this._field[i][j];
-          elements.push(
-            this.processCell({ ...cell, cellIndex: { x: j, y: i } })
-          );
-        }
-      }
-
-      this._graphics.elements = elements;
-    });
-
-    const fieldUpdateHandler = (data: TCellWithMeta[]) => {
-      for (const {
-        cellIndex: { x, y },
-        ...cell
-      } of data) {
-        this._field[y][x] = cell;
-      }
-      const elements: IRenderElement[] = [];
-
-      for (let i = 0; i < this._field.length; i++) {
-        for (let j = 0; j < this._field[i].length; j++) {
-          const cell = this._field[i][j];
-          this.processCell({ ...cell, cellIndex: { x: j, y: i } });
-        }
-      }
-
-      this._graphics.elements = elements;
-    };
-
-    this._socket.on("field:update", fieldUpdateHandler);
-
-    this._socket.on("game:over", (timeout: number) => {
-      console.log("over");
-      this._socket.off("field:update", fieldUpdateHandler);
-      const elements = [...this._graphics.elements];
-      elements.push({
-        height: 50,
-        width: 350,
-        x: canvas.width / 2 - 175,
-        y: canvas.height / 2 - 25,
-        z: 10,
-        border: {
-          color: "red",
-        },
-        bgColor: "lightgray",
-        text: {
-          value: "Игра окончена",
-          font: "40px sans-serif",
-          color: "#000",
-          offset: {
-            x: 175,
-            y: 27,
-          },
-        },
-      });
-
-      const restartEl = {
-        height: 50,
-        width: 350,
-        x: canvas.width / 2 - 175,
-        y: canvas.height / 2 - 25 + 70,
-        z: 10,
-        border: {
-          color: "red",
-        },
-        bgColor: "lightgray",
-        text: {
-          value: `Рестарт через ${timeout}`,
-          font: "40px sans-serif",
-          color: "#000",
-          offset: {
-            x: 175,
-            y: 27,
-          },
-        },
-      } satisfies IRenderElement;
-
-      elements.push(restartEl);
-
-      let secondsLeft = timeout;
-      const restartInt = setInterval(() => {
-        restartEl.text.value = `Рестарт через ${--secondsLeft}`;
-        this._graphics.elements = elements;
-
-        if (secondsLeft === 0) {
-          clearInterval(restartInt);
-          this._socket.on("field:update", fieldUpdateHandler);
-        }
-      }, 1000);
-
-      this._graphics.elements = elements;
-    });
+    this._socket.on("field:loaded", this.fieldLoadedHandler.bind(this));
+    this._socket.on("field:update", this.fieldUpdateHandler.bind(this));
+    this._socket.on(
+      "game:update:restartTime",
+      this.updateRestartControls.bind(this)
+    );
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   private processCell({
@@ -139,13 +54,14 @@ export class MineSweeper {
     const onClick: TRenderCell["onClick"] = ({ data }, e) => {
       if (cell.state === ECellState.Opened) return;
 
-      let event = "cell:open:req";
+      let gameEvent = "cell:open:req";
 
-      if (e.button === 1) {
-        event = "cell:flag:req";
+      if (e.button === 2) {
+        e.preventDefault();
+        gameEvent = "cell:flag:req";
       }
 
-      this._socket.emit(event, data);
+      this._socket.emit(gameEvent, data);
     };
 
     let text: TRenderCell["text"];
@@ -154,7 +70,6 @@ export class MineSweeper {
       text = {
         value: cell.value || "",
         color: "blue",
-        offset: { y: 2 },
         font: "24px sans-serif",
         maxWidth: CELL_CONFIG.size,
       };
@@ -165,5 +80,95 @@ export class MineSweeper {
       onClick,
       text,
     };
+  }
+
+  private fieldLoadedHandler(field: TCell[][]) {
+    this.deleteRestartControls();
+
+    this._field = field;
+
+    this.render();
+  }
+
+  private fieldUpdateHandler(data: IFieldUpdateRes) {
+    const { updatedCells, gameState } = data;
+    for (const {
+      cellIndex: { x, y },
+      ...cell
+    } of updatedCells) {
+      this._field[y][x] = cell;
+    }
+
+    if (gameState) {
+      this.createRestartControls(gameState);
+    }
+
+    this.render();
+  }
+
+  private createRestartControls(state: IGameEndedState) {
+    this._controls["gameOver"] = {
+      height: 50,
+      width: 350,
+      x: this.canvas.width / 2 - 175,
+      y: this.canvas.height / 2 - 25,
+      z: 10,
+      border: {
+        color: "red",
+      },
+      bgColor: "lightgray",
+      text: {
+        value: state.status === "lost" ? "Игра окончена" : "Вы выиграли",
+        font: "40px sans-serif",
+        color: "#000",
+      },
+    };
+
+    this._controls["restart"] = {
+      height: 50,
+      width: 350,
+      x: this.canvas.width / 2 - 175,
+      y: this.canvas.height / 2 - 25 + 70,
+      z: 10,
+      border: {
+        color: "red",
+      },
+      bgColor: "lightgray",
+      text: {
+        value: `Рестарт через ${state.secondsLeft}`,
+        font: "40px sans-serif",
+        color: "#000",
+      },
+    };
+  }
+
+  private updateRestartControls(secondsLeft: number) {
+    if (this._controls["restart"].text) {
+      this._controls["restart"].text.value = `Рестарт через ${secondsLeft}`;
+    }
+
+    this.render();
+  }
+
+  private deleteRestartControls() {
+    delete this._controls["gameOver"];
+    delete this._controls["restart"];
+  }
+
+  private render() {
+    const elements: IRenderElement[] = [];
+
+    for (let i = 0; i < this._field.length; i++) {
+      for (let j = 0; j < this._field[i].length; j++) {
+        const cell = this._field[i][j];
+        elements.push(this.processCell({ ...cell, cellIndex: { x: j, y: i } }));
+      }
+    }
+
+    for (const key in this._controls) {
+      elements.push(this._controls[key]);
+    }
+
+    this._graphics.elements = elements;
   }
 }

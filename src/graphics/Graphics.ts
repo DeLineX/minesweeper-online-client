@@ -36,7 +36,7 @@ export class Graphics {
   }
 
   private setupHandlers() {
-    this.canvas.addEventListener("click", this.handleClick.bind(this));
+    this.canvas.addEventListener("mousedown", this.handleClick.bind(this));
   }
 
   private renderElement({
@@ -61,8 +61,8 @@ export class Graphics {
 
       this.ctx.fillText(
         text.value.toString(),
-        x + width / 2 + (text.offset?.x ?? 0),
-        y + height / 2 + (text.offset?.y ?? 0),
+        x + width / 2,
+        y + height / 2 + 2,
         text.maxWidth
       );
     }
