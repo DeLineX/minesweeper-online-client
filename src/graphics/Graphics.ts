@@ -61,8 +61,8 @@ export class Graphics {
 
       this.ctx.fillText(
         text.value.toString(),
-        x + (text.offset?.x ?? 0),
-        y + (text.offset?.y ?? 0),
+        x + width / 2 + (text.offset?.x ?? 0),
+        y + height / 2 + (text.offset?.y ?? 0),
         text.maxWidth
       );
     }
@@ -70,13 +70,13 @@ export class Graphics {
     this.ctx.strokeRect(x, y, width, height);
   }
 
-  private render() {
+  public render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     const sortedElementsObj = this._elements.reduce<
       Record<number, IRenderElement[]>
-    >((acc, item) => {
-      if (!acc[item.z]) acc[item.z] = [];
-      acc[item.z].push(item);
+    >((acc, { z = 0, ...item }) => {
+      if (!acc[z]) acc[z] = [];
+      acc[z].push(item);
       return acc;
     }, {});
 
@@ -85,10 +85,5 @@ export class Graphics {
         this.renderElement(element);
       }
     }
-  }
-
-  public pushElements(...elements: IRenderElement[]) {
-    this._elements.push(...elements);
-    this.render();
   }
 }

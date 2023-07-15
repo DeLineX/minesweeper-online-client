@@ -1,11 +1,6 @@
-import { Graphics } from "./graphics";
-import {
-  ECellState,
-  IRenderElement,
-  CellIndex,
-  TCell,
-  TCellWithMeta,
-} from "./types";
+import { Graphics, IRenderElement } from "../graphics";
+import { CONFIG } from "./config";
+import { ECellState, TCell, TCellWithMeta, TRenderCell } from "./types";
 import { io } from "socket.io-client";
 
 export class MineSweeper {
@@ -25,7 +20,9 @@ export class MineSweeper {
       for (let i = 0; i < this._field.length; i++) {
         for (let j = 0; j < this._field[i].length; j++) {
           const cell = this._field[i][j];
-          elements.push(this.processCell({ cell, x: j, y: i }));
+          elements.push(
+            this.processCell({ ...cell, cellIndex: { x: j, y: i } })
+          );
         }
       }
 
@@ -44,7 +41,7 @@ export class MineSweeper {
       for (let i = 0; i < this._field.length; i++) {
         for (let j = 0; j < this._field[i].length; j++) {
           const cell = this._field[i][j];
-          elements.push(this.processCell({ cell, x: j, y: i }));
+          this.processCell({ ...cell, cellIndex: { x: j, y: i } });
         }
       }
 
@@ -117,52 +114,56 @@ export class MineSweeper {
   }
 
   private processCell({
-    cell,
-    x,
-    y,
-  }: CellIndex & { cell: TCell }): IRenderElement {
-    const bgColorRecord: Record<ECellState, string> = {
-      [ECellState.Opened]: "lightGray",
-      [ECellState.Closed]: "gray",
-      [ECellState.Flagged]: "red",
-    };
+    cellIndex: { x, y },
+    ...cell
+  }: TCellWithMeta): TRenderCell {
+    const CELL_CONFIG = CONFIG.cell;
+    const BORDER_CONFIG = CONFIG.border;
 
-    const CELL_SIZE = 30;
-    const BORDER_SIZE = 2;
+    const commonCellConfig: TRenderCell = {
+      y: y * CELL_CONFIG.size + BORDER_CONFIG.size,
+      x: x * CELL_CONFIG.size + BORDER_CONFIG.size,
 
-    return {
-      y: y * CELL_SIZE + BORDER_SIZE,
-      x: x * CELL_SIZE + BORDER_SIZE,
-      z: 0,
-      height: CELL_SIZE,
-      width: CELL_SIZE,
+      height: CELL_CONFIG.size,
+      width: CELL_CONFIG.size,
+
       data: {
         y,
         x,
       },
-      onClick: ({ data }, e) => {
-        if (cell.state === ECellState.Opened) return;
-        let event = "cell:open:req";
-        if (e.button === 1) {
-          event = "cell:flag:req";
-        }
-        this._socket.emit(event, data);
-      },
-      bgColor: bgColorRecord[cell.state],
-      border: {
-        color: "#000",
-        size: BORDER_SIZE,
-      },
-      text:
-        cell.state === ECellState.Opened
-          ? {
-              value: cell.value || "",
-              color: "blue",
-              offset: { x: CELL_SIZE / 2, y: CELL_SIZE / 2 + 2 },
-              font: "24px sans-serif",
-              maxWidth: CELL_SIZE,
-            }
-          : undefined,
+
+      bgColor: CELL_CONFIG.backGround[cell.state],
+      border: BORDER_CONFIG,
+    };
+
+    const onClick: TRenderCell["onClick"] = ({ data }, e) => {
+      if (cell.state === ECellState.Opened) return;
+
+      let event = "cell:open:req";
+
+      if (e.button === 1) {
+        event = "cell:flag:req";
+      }
+
+      this._socket.emit(event, data);
+    };
+
+    let text: TRenderCell["text"];
+
+    if (cell.state === ECellState.Opened) {
+      text = {
+        value: cell.value || "",
+        color: "blue",
+        offset: { y: 2 },
+        font: "24px sans-serif",
+        maxWidth: CELL_CONFIG.size,
+      };
+    }
+
+    return {
+      ...commonCellConfig,
+      onClick,
+      text,
     };
   }
 }

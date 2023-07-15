@@ -1,4 +1,4 @@
-import { MineSweeper } from "./mine-sweeper/mine-sweeper";
+import { MineSweeper } from "./mine-sweeper";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
 

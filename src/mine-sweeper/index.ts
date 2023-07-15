@@ -1,1 +1,1 @@
-export * from "./mine-sweeper-graphics";
+export * from "./MineSweeper";
