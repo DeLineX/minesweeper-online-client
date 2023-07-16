@@ -22,13 +22,33 @@ export type TCellWithMeta = TCell & { cellIndex: ICellIndex };
 
 export type TRenderCell = IRenderElement<ICellIndex>;
 
-export interface IGameEndedState {
+export type TGameStateType = "started" | "ended";
+
+export interface IGameStateBase {
+  type: TGameStateType;
+}
+
+export interface IGameStartedState extends IGameStateBase {
+  type: "started";
+}
+
+export interface IGameEndedState extends IGameStateBase {
   type: "ended";
-  status: "won" | "lost";
+  status: "won" | "lose";
   secondsLeft: number;
 }
 
-export interface IFieldUpdateRes {
+export type TGameState = IGameStartedState | IGameEndedState;
+
+export interface IFieldLoadRes {
+  width: number;
+  height: number;
   updatedCells: TCellWithMeta[];
-  gameState?: IGameEndedState;
+  gameState: TGameState;
+  flagsCount: number;
+  minesCount: number;
 }
+
+export interface IFieldUpdateRes
+  extends Pick<IFieldLoadRes, "updatedCells">,
+    Partial<Pick<IFieldLoadRes, "flagsCount" | "gameState">> {}

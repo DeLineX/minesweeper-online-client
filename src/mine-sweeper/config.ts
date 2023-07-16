@@ -1,8 +1,8 @@
 import { ECellState } from "./types";
 
 interface IBorderConfig {
-  readonly size: number;
-  readonly color: string;
+  size: number;
+  color: string;
 }
 
 const BORDER_CONFIG: IBorderConfig = {
@@ -11,8 +11,8 @@ const BORDER_CONFIG: IBorderConfig = {
 };
 
 interface ICellConfig {
-  readonly size: number;
-  readonly backGround: Record<ECellState, string>;
+  size: number;
+  backGround: Record<ECellState, string>;
 }
 
 const CELL_CONFIG: ICellConfig = {
@@ -25,11 +25,17 @@ const CELL_CONFIG: ICellConfig = {
 };
 
 interface IMineSweeperConfig {
-  readonly cell: ICellConfig;
-  readonly border: IBorderConfig;
+  cell: ICellConfig;
+  border: IBorderConfig;
+  topControls: {
+    size: number;
+  };
 }
 
 export const CONFIG: IMineSweeperConfig = {
   cell: CELL_CONFIG,
   border: BORDER_CONFIG,
+  topControls: {
+    size: 30,
+  },
 };
