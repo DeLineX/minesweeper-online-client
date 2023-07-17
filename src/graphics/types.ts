@@ -3,6 +3,14 @@ export interface Point {
   y: number;
 }
 
+export interface IRenderImage {
+  src: CanvasImageSource;
+  dx: number;
+  dy: number;
+  width: number;
+  height: number;
+}
+
 export interface IRenderElement<Data extends Record<string, any> = any>
   extends Point {
   z?: number;
@@ -14,8 +22,8 @@ export interface IRenderElement<Data extends Record<string, any> = any>
   hidden?: boolean;
   onClick?: (element: IRenderElement<Data>, e: MouseEvent) => void;
 
-  bgColor: string;
-  border: {
+  bgColor?: string;
+  border?: {
     color: string;
     size?: number;
   };
@@ -27,5 +35,6 @@ export interface IRenderElement<Data extends Record<string, any> = any>
     align?: CanvasRenderingContext2D["textAlign"];
     baseline?: CanvasRenderingContext2D["textBaseline"];
   };
+  imageLayers?: IRenderImage[];
   position?: "static" | "fixed";
 }

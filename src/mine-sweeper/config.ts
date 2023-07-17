@@ -16,7 +16,7 @@ interface ICellConfig {
 }
 
 const CELL_CONFIG: ICellConfig = {
-  size: 30,
+  size: 32,
   backGround: {
     [ECellState.Opened]: "lightGray",
     [ECellState.Closed]: "gray",

@@ -1,10 +1,11 @@
-import { Graphics, IRenderElement } from "../graphics";
+import { Graphics, IRenderElement, IRenderImage } from "../graphics";
 import { CONFIG } from "./config";
 import {
   ECellState,
   IFieldLoadRes,
   IFieldUpdateRes,
   TCell,
+  TCellValue,
   TCellWithMeta,
   TGameState,
   TRenderCell,
@@ -19,9 +20,13 @@ export class MineSweeper {
   private _flagsCount: number = 0;
   private _controls: Record<string, IRenderElement> = {};
   private _socket = io("http://localhost:3000/");
+  private _tilesImg: CanvasImageSource;
 
   constructor(private canvas: HTMLCanvasElement) {
     this._graphics = new Graphics(canvas);
+
+    this._tilesImg = new Image();
+    this._tilesImg.src = "/src/assets/tiles.png";
 
     this._socket.on("field:loaded", this.fieldLoadedHandler.bind(this));
     this._socket.on("field:update", this.fieldUpdateHandler.bind(this));
@@ -32,16 +37,99 @@ export class MineSweeper {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
+  private getBgTile(name: ECellState): IRenderImage {
+    const base: IRenderImage = {
+      src: this._tilesImg,
+      dx: 0,
+      dy: 0,
+      height: 16,
+      width: 16,
+    };
+
+    let dx: number = 0;
+    let dy: number = 0;
+
+    switch (name) {
+      case ECellState.Closed:
+        dx = 32;
+        break;
+      case ECellState.Opened:
+        dx = 80;
+        break;
+      case ECellState.Flagged:
+        dx = 16;
+        break;
+    }
+
+    return {
+      ...base,
+      dx,
+      dy,
+    };
+  }
+
+  private getValueTile(name: Exclude<TCellValue, 0>): IRenderImage {
+    const base: IRenderImage = {
+      src: this._tilesImg,
+      dx: 0,
+      dy: 0,
+      height: 16,
+      width: 16,
+    };
+
+    let dx: number = 0;
+    let dy: number = 0;
+
+    switch (name) {
+      case 1:
+        dy = 16;
+        break;
+      case 2:
+        dx = 16;
+        dy = 16;
+        break;
+      case 3:
+        dx = 32;
+        dy = 16;
+        break;
+      case 4:
+        dx = 48;
+        dy = 16;
+        break;
+      case 5:
+        dx = 64;
+        dy = 16;
+        break;
+      case 6:
+        dx = 80;
+        dy = 16;
+        break;
+      case 7:
+        dx = 96;
+        dy = 16;
+        break;
+      case 8:
+        dx = 112;
+        dy = 16;
+        break;
+    }
+
+    return {
+      ...base,
+      dx,
+      dy,
+    };
+  }
+
   private processCell({
     cellIndex: { x, y },
     ...cell
   }: TCellWithMeta): TRenderCell {
     const CELL_CONFIG = CONFIG.cell;
-    const BORDER_CONFIG = CONFIG.border;
 
     const commonCellConfig: TRenderCell = {
-      y: y * CELL_CONFIG.size + BORDER_CONFIG.size + CONFIG.topControls.size,
-      x: x * CELL_CONFIG.size + BORDER_CONFIG.size + CONFIG.topControls.size,
+      y: y * CELL_CONFIG.size + CONFIG.topControls.size,
+      x: x * CELL_CONFIG.size + CONFIG.topControls.size,
 
       height: CELL_CONFIG.size,
       width: CELL_CONFIG.size,
@@ -50,9 +138,6 @@ export class MineSweeper {
         y,
         x,
       },
-
-      bgColor: CELL_CONFIG.backGround[cell.state],
-      border: BORDER_CONFIG,
     };
 
     const onClick: TRenderCell["onClick"] = ({ data }, e) => {
@@ -76,19 +161,21 @@ export class MineSweeper {
 
     let text: TRenderCell["text"];
 
+    const imageLayers: TRenderCell["imageLayers"] = [];
+
+    imageLayers.push(this.getBgTile(cell.state));
+
     if (cell.state === ECellState.Opened) {
-      text = {
-        value: cell.value || "",
-        color: "blue",
-        font: "24px sans-serif",
-        maxWidth: CELL_CONFIG.size,
-      };
+      if (cell.value !== 0) {
+        imageLayers.push(this.getValueTile(cell.value));
+      }
     }
 
     return {
       ...commonCellConfig,
       onClick,
       text,
+      imageLayers,
     };
   }
 
