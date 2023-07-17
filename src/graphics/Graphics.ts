@@ -19,6 +19,8 @@ export class Graphics {
     // todo: add error
     this.ctx = canvas.getContext("2d")!;
 
+    this.ctx.imageSmoothingEnabled = true;
+
     this.setupHandlers();
   }
 
@@ -42,7 +44,7 @@ export class Graphics {
     }
   }
 
-  private handleDragEnd(e: MouseEvent) {
+  private handleDragEnd() {
     this.__isDragging = false;
   }
 
@@ -78,6 +80,7 @@ export class Graphics {
     width,
     height,
     text,
+    imageLayers,
     hidden,
     position = "static",
   }: IRenderElement) {
@@ -89,8 +92,6 @@ export class Graphics {
       currentX += this._offset.x;
       currentY += this._offset.y;
     }
-
-    // console.log(currentX, currentY);
 
     if (
       currentX + width < 0 ||
@@ -104,8 +105,28 @@ export class Graphics {
     this.ctx.lineWidth = border?.size ?? 0;
     this.ctx.strokeStyle = border?.color ?? "";
 
-    this.ctx.fillRect(currentX, currentY, width, height);
-    this.ctx.strokeRect(currentX, currentY, width, height);
+    if (bgColor) {
+      this.ctx.fillRect(currentX, currentY, width, height);
+    }
+    if (border) {
+      this.ctx.strokeRect(currentX, currentY, width, height);
+    }
+
+    if (imageLayers) {
+      for (const image of imageLayers) {
+        this.ctx.drawImage(
+          image.src,
+          image.dx,
+          image.dy,
+          image.width,
+          image.height,
+          currentX,
+          currentY,
+          width,
+          height
+        );
+      }
+    }
 
     if (text) {
       this.ctx.fillStyle = text.color ?? "";
